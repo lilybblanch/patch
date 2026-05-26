@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meet Patch — the buddy who blocks bad clicks · a NextWork project by Lily Blanch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..600;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4EDE1; --bg-2:#FBF7EF; --panel:#FFFFFF; --panel-2:#F8F2E8;
+    --text:#1B1918; --dim:#76695F; --faint:#A99C8E;
+    --line:rgba(27,25,24,.10); --line-2:rgba(27,25,24,.16);
+    --accent:#E5631B; --accent-soft:rgba(229,99,27,.12);
+    --green:#1FA877; --green-soft:rgba(31,168,119,.12);
+    --danger:#E0492F; --danger-soft:rgba(224,73,47,.12);
+    --patch-1:#39D6A0; --patch-2:#15A073;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:"Hanken Grotesk",-apple-system,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .ambient{position:fixed;inset:0;z-index:0;pointer-events:none}
+  .ambient::before{content:"";position:absolute;top:-20%;right:-10%;width:60vw;height:60vw;border-radius:50%;
+    background:radial-gradient(circle,rgba(31,168,119,.12),transparent 65%);filter:blur(30px)}
+  .wrap{position:relative;z-index:1;max-width:880px;margin:0 auto;padding:0 26px}
+
+  .mono{font-family:"JetBrains Mono",monospace}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--accent);display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--accent)}
+  h1{font-family:"Fraunces",serif;font-weight:400;letter-spacing:-.02em;line-height:1.04;font-size:clamp(36px,5.6vw,62px)}
+  h1 em{font-style:italic;color:var(--accent)}
+  h2{font-family:"Fraunces",serif;font-weight:400;letter-spacing:-.015em;line-height:1.1;font-size:clamp(26px,3.6vw,38px);margin:0 0 14px}
+  h2 em{font-style:italic;color:var(--accent)}
+  h3{font-size:19px;font-weight:600;letter-spacing:-.01em}
+  p{color:var(--dim);font-size:17px}
+  p b,p strong{color:var(--text);font-weight:600}
+
+  /* ================= THE DEMO ================= */
+  .stage{margin:26px 0 6px}
+  .screen{position:relative;height:480px;border-radius:22px;overflow:hidden;cursor:none;
+    background:linear-gradient(180deg,#fffdf8,#f3ead9);border:1px solid var(--line-2);
+    box-shadow:0 36px 80px -36px rgba(60,40,20,.42), inset 0 1px 0 rgba(255,255,255,.7)}
+  .chrome{height:46px;display:flex;align-items:center;gap:8px;padding:0 16px;
+    background:rgba(27,25,24,.04);border-bottom:1px solid var(--line)}
+  .chrome .b{width:11px;height:11px;border-radius:50%;background:var(--line-2)}
+  .chrome .url{margin-left:12px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--faint);
+    background:#fff;border:1px solid var(--line);border-radius:7px;padding:5px 12px}
+  .content{padding:26px 28px 0}
+  .content .hd{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:560px;margin:0 auto}
+  .tile{position:relative;display:flex;align-items:center;gap:13px;padding:16px 16px;border-radius:14px;
+    border:1px solid var(--line);background:#fff;transition:transform .25s,box-shadow .25s,border-color .25s}
+  .tile .ic{width:40px;height:40px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;
+    background:var(--green-soft);color:var(--green)}
+  .tile.bad .ic{background:var(--danger-soft);color:var(--danger)}
+  .tile .nm{font-size:14.5px;font-weight:600;color:var(--text);word-break:break-word;line-height:1.25}
+  .tile .sub{font-size:12px;color:var(--faint);margin-top:2px}
+  .tile .flag{position:absolute;top:10px;right:10px;width:16px;height:16px;color:var(--danger);opacity:.85}
+  .tile.hot{transform:translateY(-2px);box-shadow:0 14px 30px -14px rgba(60,40,20,.3);border-color:var(--line-2)}
+
+  /* custom cursor */
+  .cursor{position:absolute;top:0;left:0;z-index:40;pointer-events:none;transform:translate(-100px,-100px)}
+  .cursor .ring{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;
+    border:1.5px solid rgba(27,25,24,.55);transition:width .25s,height .25s,margin .25s,border-color .25s,opacity .25s}
+  .cursor .dot{position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;
+    background:var(--text);transition:transform .2s,background .2s}
+  .cursor.hot .ring{width:46px;height:46px;margin:-23px 0 0 -23px;border-color:var(--green)}
+  .cursor.hot .dot{transform:scale(.5)}
+  .cursor.blocked .ring{border-color:var(--danger)}
+  .cursor.blocked .dot{background:var(--danger);animation:jit .25s linear infinite}
+  @keyframes jit{0%,100%{transform:translate(0,0)}25%{transform:translate(1px,-1px)}50%{transform:translate(-1px,1px)}75%{transform:translate(1px,1px)}}
+
+  /* ============ PATCH (faceless guardian) ============ */
+  .patch{position:absolute;top:0;left:0;z-index:30;pointer-events:none;
+    transform:translate(-200px,-200px) translate(-50%,-100%);
+    opacity:0;transition:opacity .3s ease}
+  .patch.show{opacity:1}
+  .patch .fig{position:relative;width:76px;height:92px;transform-origin:50% 100%;
+    transform:scale(.5);transition:transform .5s cubic-bezier(.5,-0.4,.3,1.45)}
+  .patch.show .fig{transform:scale(1);animation:bob 2.6s ease-in-out infinite}
+  @keyframes bob{0%,100%{translate:0 0}50%{translate:0 -4px}}
+
+  .patch .shadow{position:absolute;bottom:-6px;left:50%;width:54px;height:12px;margin-left:-27px;
+    border-radius:50%;background:rgba(20,60,45,.18);filter:blur(3px)}
+  .patch .body{position:absolute;bottom:6px;left:10px;width:56px;height:50px;border-radius:26px 26px 22px 22px;
+    background:radial-gradient(circle at 40% 30%,var(--patch-1),var(--patch-2));
+    box-shadow:inset -4px -6px 10px rgba(10,90,65,.35),0 6px 14px -6px rgba(20,120,85,.5)}
+  .patch .head{position:absolute;top:2px;left:18px;width:40px;height:40px;border-radius:50%;
+    background:radial-gradient(circle at 38% 30%,var(--patch-1),var(--patch-2));
+    box-shadow:inset -3px -4px 8px rgba(10,90,65,.32)}
+  .patch .ant{position:absolute;top:-9px;left:37px;width:2px;height:10px;background:var(--patch-2);border-radius:2px}
+  .patch .ant::after{content:"";position:absolute;top:-5px;left:-2px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .patch .shield{position:absolute;top:20px;left:30px;width:16px;height:18px;
+    background:rgba(255,255,255,.9);border-radius:5px 5px 8px 8px;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%);
+    box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .patch .shield::after{content:"";position:absolute;top:4px;left:6px;width:4px;height:7px;
+    border-left:2px solid var(--patch-2);border-bottom:2px solid var(--patch-2);transform:rotate(-45deg)}
+  .patch .arm{position:absolute;width:11px;height:30px;border-radius:7px;
+    background:linear-gradient(var(--patch-1),var(--patch-2));transform-origin:50% 8px;
+    transition:transform .45s cubic-bezier(.5,-0.3,.3,1.4)}
+  .patch .arm .mitt{position:absolute;bottom:-7px;left:-2px;width:15px;height:15px;border-radius:50%;
+    background:var(--patch-1);box-shadow:inset -2px -2px 4px rgba(10,90,65,.3)}
+  .patch .arm.l{bottom:26px;left:8px;transform:rotate(28deg)}
+  .patch .arm.r{bottom:26px;right:8px;transform:rotate(-28deg)}
+  /* alert / pushing pose: arms thrust outward */
+  .patch.alert .arm.l{transform:rotate(118deg)}
+  .patch.alert .arm.r{transform:rotate(-118deg)}
+  .patch.alert .fig{animation:shove .45s ease-in-out infinite}
+  @keyframes shove{0%,100%{translate:0 0}50%{translate:0 1px}}
+  /* high-five pose: right arm straight up, mitt open */
+  .patch.hi .arm.r{transform:rotate(-165deg)}
+  .patch.hi .arm.r .mitt{width:19px;height:19px;left:-4px;bottom:-9px}
+  .patch.hi .fig{animation:hop .5s ease}
+  @keyframes hop{0%{translate:0 0}40%{translate:0 -10px}100%{translate:0 0}}
+
+  /* choice card */
+  .choice{position:absolute;left:50%;bottom:18px;z-index:35;transform:translateX(-50%) translateY(14px);
+    width:min(540px,calc(100% - 40px));opacity:0;pointer-events:none;
+    background:rgba(27,25,24,.94);color:#F2EADB;border-radius:16px;padding:14px;
+    box-shadow:0 24px 50px -20px rgba(0,0,0,.5);transition:opacity .35s ease,transform .35s cubic-bezier(.3,.7,.3,1)}
+  .choice.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .choice .top{display:flex;align-items:center;gap:11px;padding:4px 6px 12px}
+  .choice .pp{width:26px;height:26px;border-radius:8px;background:var(--patch-2);flex:none;position:relative}
+  .choice .pp::after{content:"";position:absolute;inset:6px 8px;background:#fff;border-radius:3px 3px 5px 5px;
+    clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%)}
+  .choice .msg{font-size:14px;line-height:1.4}
+  .choice .msg b{color:#fff}
+  .choice .row{display:flex;gap:8px}
+  .choice button{flex:1;border:1px solid rgba(242,234,219,.16);background:rgba(242,234,219,.06);
+    color:#F2EADB;font-family:"Hanken Grotesk";font-size:13.5px;font-weight:600;padding:11px 8px;border-radius:10px;
+    cursor:none;transition:.2s;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .choice button small{font-weight:400;font-size:10.5px;color:rgba(242,234,219,.6);letter-spacing:.02em}
+  .choice button:hover{background:rgba(242,234,219,.13)}
+  .choice button.insp:hover{border-color:#8fd0ff}
+  .choice button.run:hover{border-color:var(--danger)}
+  .choice button.five:hover{border-color:var(--patch-1)}
+  .reasons{max-height:0;overflow:hidden;transition:max-height .4s ease;padding:0 6px}
+  .reasons.open{max-height:220px}
+  .reasons ul{list-style:none;padding:12px 0 6px;display:grid;gap:8px}
+  .reasons li{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:rgba(242,234,219,.85)}
+  .reasons li .x{color:var(--danger);flex:none;margin-top:2px}
+
+  .toast{position:absolute;left:50%;top:14px;transform:translateX(-50%) translateY(-12px);z-index:45;
+    background:rgba(27,25,24,.92);color:#F2EADB;font-size:13px;padding:9px 16px;border-radius:999px;
+    opacity:0;transition:.35s;font-family:"JetBrains Mono",monospace;letter-spacing:.02em;white-space:nowrap}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.safe{background:var(--green)} .toast.warn{background:var(--danger)}
+
+  .spark{position:absolute;width:7px;height:7px;border-radius:2px;z-index:42;pointer-events:none}
+
+  .demo-hint{text-align:center;font-size:13px;color:var(--faint);margin-top:16px;font-family:"JetBrains Mono",monospace;letter-spacing:.03em}
+
+  /* ============ LESSON ============ */
+  section{padding:46px 0;border-top:1px solid var(--line)}
+  .hero{padding:52px 0 24px;border:none;text-align:center}
+  .lede{font-size:19px;color:var(--dim);max-width:600px;margin:22px auto 0}
+  .chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:28px}
+  .chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);border-radius:999px;
+    padding:8px 14px;font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.04em;color:var(--dim)}
+  .chip .d{width:7px;height:7px;border-radius:50%;background:var(--green)}
+
+  .anatomy{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px}
+  .part{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--panel)}
+  .part .k{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:5px}
+  .part .d{font-size:14.5px;color:var(--dim)}
+
+  .step{display:flex;gap:20px;margin-top:30px}
+  .step .num{flex:none;width:38px;height:38px;border-radius:11px;background:var(--accent-soft);color:var(--accent);
+    font-family:"JetBrains Mono",monospace;font-weight:500;font-size:15px;display:flex;align-items:center;justify-content:center}
+  .step .body{flex:1;min-width:0}
+  .step .body h3{margin-bottom:6px}
+  .step .body p{font-size:16px}
+
+  .code{position:relative;margin-top:16px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#1c1b24}
+  .code pre{margin:0;padding:18px;overflow-x:auto}
+  .code code{font-family:"JetBrains Mono",monospace;font-size:13px;line-height:1.7;color:#e7e4f0;white-space:pre}
+  .tok-sel{color:#ffb37a}.tok-prop{color:#8fd0ff}.tok-val{color:#c5e8a0}.tok-com{color:#7d7a90;font-style:italic}
+  .tok-kw{color:#f0a6d6}.tok-fn{color:#9ad0ff}
+  .copy{position:absolute;top:10px;right:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);
+    color:#cfcce0;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.06em;padding:6px 10px;border-radius:8px;cursor:pointer;transition:.25s}
+  .copy:hover{background:rgba(255,255,255,.14);color:#fff}
+
+  .callout{border:1px solid var(--line-2);border-radius:16px;padding:24px 26px;margin-top:26px;background:var(--panel-2)}
+  .callout .tag{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+  .callout p{font-size:16px}
+  .callout p+p{margin-top:10px}
+
+  .phase{display:flex;gap:14px;align-items:flex-start;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-top:16px;background:var(--panel)}
+  .phase .tg{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.08em;color:var(--green);
+    border:1px solid var(--green);border-radius:999px;padding:5px 10px;flex:none}
+  .phase .pt{font-size:15.5px;color:var(--dim)} .phase .pt b{color:var(--text)}
+
+  .beats{margin-top:20px;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .beat{display:flex;gap:16px;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .beat:last-child{border-bottom:none}
+  .beat .bn{font-family:"Fraunces",serif;font-style:italic;font-size:24px;color:var(--accent);flex:none;width:30px}
+  .beat .bt{font-size:15.5px;color:var(--dim)} .beat .bt b{color:var(--text);font-weight:600}
+
+  .footer{text-align:center;padding:40px 0;color:var(--faint);font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.05em;border-top:1px solid var(--line)}
+  .footer a{color:var(--accent);text-decoration:none}
+
+  @media(max-width:640px){.anatomy{grid-template-columns:1fr}.grid{max-width:none}.screen{height:520px}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}.patch .fig,.patch .arm{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="ambient"></div>
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">NextWork project · AI Workspace · automate &amp; secure</span>
+    <h1 style="margin-top:22px">Meet <em>Patch</em> — the buddy<br>who blocks bad clicks.</h1>
+    <p class="lede">A little guardian you'd "download." Hover toward a safe file and your cursor behaves like always. Reach for a sketchy one and Patch leaps in, shoves your cursor aside, and gives you a choice. Try it.</p>
+
+    <div class="stage">
+      <div class="screen" id="screen">
+        <div class="chrome"><span class="b"></span><span class="b"></span><span class="b"></span>
+          <span class="url">downloads · keep your cursor inside this window</span></div>
+        <div class="content">
+          <div class="hd">Your downloads — 4 items</div>
+          <div class="grid" id="grid">
+            <div class="tile" data-safe="1" data-name="team-photo.jpg">
+              <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5L5 21"/></svg></span>
+              <div><div class="nm">team-photo.jpg</div><div class="sub">2.1 MB · image</div></div>
+            </div>
+            <div class="tile" data-safe="1" data-name="Q4-report.pdf">
+              <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span>
+              <div><div class="nm">Q4-report.pdf</div><div class="sub">840 KB · document</div></div>
+            </div>
+            <div class="tile bad" data-safe="0" data-id="reset" data-name="reset-password-now.link">
+              <span class="flag"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2l10 18H2z"/><path d="M12 9v5M12 17.5v.01"/></svg></span>
+              <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg></span>
+              <div><div class="nm">reset-password-now.link</div><div class="sub">unknown sender</div></div>
+            </div>
+            <div class="tile bad" data-safe="0" data-id="iphone" data-name="FREE_iPhone.exe">
+              <span class="flag"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2l10 18H2z"/><path d="M12 9v5M12 17.5v.01"/></svg></span>
+              <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span>
+              <div><div class="nm">FREE_iPhone.exe</div><div class="sub">14 MB · application</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Patch -->
+        <div class="patch" id="patch">
+          <div class="fig">
+            <div class="shadow"></div>
+            <div class="arm l"><span class="mitt"></span></div>
+            <div class="arm r"><span class="mitt"></span></div>
+            <div class="body"></div>
+            <div class="head"><span class="ant"></span></div>
+            <div class="shield"></div>
+          </div>
+        </div>
+
+        <!-- choice -->
+        <div class="choice" id="choice">
+          <div class="top"><span class="pp"></span><div class="msg" id="cmsg"><b>Hold up.</b> That one looks risky. What do you want to do?</div></div>
+          <div class="row">
+            <button class="insp" id="bInsp">Inspect<small>why it's risky</small></button>
+            <button class="run" id="bRun">Run anyway<small>your call</small></button>
+            <button class="five" id="bFive">High-five<small>thanks, Patch</small></button>
+          </div>
+          <div class="reasons" id="reasons"><ul id="rlist"></ul></div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+        <div class="cursor" id="cursor"><div class="ring"></div><div class="dot"></div></div>
+      </div>
+      <div class="demo-hint">move your cursor toward a flagged file — Patch is watching</div>
+    </div>
+  </header>
+
+  <section>
+    <span class="eyebrow">The brief</span>
+    <h2 style="margin-top:16px">What you're building</h2>
+    <p>A friendly "threat companion" that lives in front of your clicks. Safe links feel normal — the cursor even changes shape like it always does. But when you drift toward something risky, Patch physically gets between you and it, then offers three honest options: <strong>inspect why</strong>, <strong>run it anyway</strong>, or <strong>high-five him</strong> for the save. It's part safety tool, part personality.</p>
+    <div class="chips">
+      <span class="chip"><span class="d"></span> Level · beginner-friendly</span>
+      <span class="chip"><span class="d"></span> ~1 hour</span>
+      <span class="chip"><span class="d"></span> Skills · custom cursors · vector math · character animation</span>
+      <span class="chip"><span class="d"></span> AI · swap the rules for a real verdict</span>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Step 0</span>
+    <h2 style="margin-top:16px">Name the parts before you animate them</h2>
+    <div class="anatomy">
+      <div class="part"><div class="k">Custom cursor</div><div class="d">We hide the OS cursor and draw our own dot + ring, so we control exactly where it can go.</div></div>
+      <div class="part"><div class="k">Danger zones</div><div class="d">An invisible radius around each risky file. Cross it and the guard kicks in.</div></div>
+      <div class="part"><div class="k">Patch</div><div class="d">A faceless blob with two arms. All his feeling comes from posture — idle, shove, high-five.</div></div>
+      <div class="part"><div class="k">The push</div><div class="d">A tiny bit of vector maths that keeps the cursor clamped outside the danger radius.</div></div>
+      <div class="part"><div class="k">The choice card</div><div class="d">Three real buttons, parked in safe space so you can always reach them.</div></div>
+      <div class="part"><div class="k">The verdict</div><div class="d">"Is this risky?" — hard-coded rules here, a real AI call in production.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Step 1</span>
+    <h2 style="margin-top:16px">Take over the cursor (but keep what people expect)</h2>
+    <p>Hide the real cursor with <span class="mono">cursor:none</span>, then draw your own and glide it toward the mouse each frame with a little easing (a "lerp"). The lag is what makes it feel soft. Lily's note: <strong>keep the familiar behaviour</strong> — over a safe link the ring still swells, so it reads as "this is clickable," exactly like a normal pointer.</p>
+    <div class="code"><button class="copy" data-copy>copy</button><pre><code><span class="tok-sel">.screen</span> { <span class="tok-prop">cursor</span>: <span class="tok-val">none</span>; }   <span class="tok-com">/* hide the OS arrow */</span>
+
+<span class="tok-kw">let</span> tx=0, ty=0, cx=0, cy=0;        <span class="tok-com">/* target vs rendered */</span>
+screen.<span class="tok-fn">addEventListener</span>(<span class="tok-val">'mousemove'</span>, e =&gt; {
+  <span class="tok-kw">const</span> r = screen.<span class="tok-fn">getBoundingClientRect</span>();
+  tx = e.clientX - r.left;  ty = e.clientY - r.top;
+});
+<span class="tok-kw">function</span> <span class="tok-fn">loop</span>(){
+  cx += (tx - cx) * <span class="tok-val">0.22</span>;          <span class="tok-com">/* ease toward the mouse */</span>
+  cy += (ty - cy) * <span class="tok-val">0.22</span>;
+  <span class="tok-com">/* …push logic goes here (Step 3)… */</span>
+  cursor.style.transform = <span class="tok-val">`translate(${cx}px,${cy}px)`</span>;
+  <span class="tok-fn">requestAnimationFrame</span>(loop);
+}
+<span class="tok-fn">loop</span>();</code></pre></div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Step 2</span>
+    <h2 style="margin-top:16px">Mark what's safe, and what isn't</h2>
+    <p>Each file is just a tile with a <span class="mono">data-safe</span> flag. The risky ones carry an <span class="mono">id</span> we can look up later for their red flags. Right now we decide safety by hand — in a moment we'll hand that judgement to an AI.</p>
+    <div class="code"><button class="copy" data-copy>copy</button><pre><code>&lt;<span class="tok-sel">div</span> class=<span class="tok-val">"tile"</span> data-safe=<span class="tok-val">"1"</span>&gt; Q4-report.pdf &lt;/div&gt;
+&lt;<span class="tok-sel">div</span> class=<span class="tok-val">"tile bad"</span> data-safe=<span class="tok-val">"0"</span> data-id=<span class="tok-val">"iphone"</span>&gt; FREE_iPhone.exe &lt;/div&gt;
+
+<span class="tok-kw">const</span> RADIUS = <span class="tok-val">108</span>;   <span class="tok-com">/* the size of each danger zone, in px */</span></code></pre></div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Step 3</span>
+    <h2 style="margin-top:16px">The push — a pinch of vector maths</h2>
+    <p>Every frame, measure from the cursor to each risky tile's centre. If you're inside the radius, don't let the cursor in: snap it back to the <em>edge</em> of the circle, along the line it came from. The cursor slides around the rim instead of reaching the file — which reads, beautifully, as being gently shoved away.</p>
+    <div class="code"><button class="copy" data-copy>copy</button><pre><code><span class="tok-kw">for</span> (<span class="tok-kw">const</span> tile <span class="tok-kw">of</span> riskyTiles) {
+  <span class="tok-kw">const</span> c  = <span class="tok-fn">centreOf</span>(tile);
+  <span class="tok-kw">const</span> dx = cx - c.x, dy = cy - c.y;
+  <span class="tok-kw">const</span> dist = <span class="tok-fn">Math.hypot</span>(dx, dy);
+
+  <span class="tok-kw">if</span> (dist &lt; RADIUS &amp;&amp; !allowed[tile.id]) {
+    <span class="tok-kw">const</span> ux = dx / dist, uy = dy / dist;   <span class="tok-com">/* direction out */</span>
+    cx = c.x + ux * RADIUS;                  <span class="tok-com">/* clamp to the rim */</span>
+    cy = c.y + uy * RADIUS;
+    <span class="tok-fn">summonPatch</span>(c, ux, uy);                  <span class="tok-com">/* stand him in the gap */</span>
+  }
+}</code></pre></div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Step 4</span>
+    <h2 style="margin-top:16px">Build Patch — all feeling, no face</h2>
+    <p>Patch is a few rounded <span class="mono">&lt;div&gt;</span>s: a body, a head, a little shield, and two arms pinned at the shoulder. There's no face on purpose — every emotion comes from <strong>posture</strong>. Swapping a class rotates his arms: down for idle, thrust out to shove, one straight up for a high-five. That's the whole trick.</p>
+    <div class="code"><button class="copy" data-copy>copy</button><pre><code><span class="tok-sel">.arm</span>          { <span class="tok-prop">transform-origin</span>: <span class="tok-val">50% 8px</span>; }   <span class="tok-com">/* pivot at shoulder */</span>
+<span class="tok-sel">.arm.l</span>        { <span class="tok-prop">transform</span>: <span class="tok-val">rotate(28deg)</span>; }    <span class="tok-com">/* resting */</span>
+<span class="tok-sel">.alert .arm.l</span> { <span class="tok-prop">transform</span>: <span class="tok-val">rotate(118deg)</span>; }   <span class="tok-com">/* SHOVE */</span>
+<span class="tok-sel">.hi .arm.r</span>    { <span class="tok-prop">transform</span>: <span class="tok-val">rotate(-165deg)</span>; }  <span class="tok-com">/* up high! */</span>
+
+<span class="tok-sel">.arm</span> { <span class="tok-prop">transition</span>: <span class="tok-val">transform .45s cubic-bezier(.5,-.3,.3,1.4)</span>; }</code></pre></div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Step 5</span>
+    <h2 style="margin-top:16px">The choice — inspect, run, or high-five</h2>
+    <p>The card lives at the bottom, well clear of the danger zone, so you can always click it. Each button has a clear job, and none of them lie to the user:</p>
+    <div class="step"><div class="num">01</div><div class="body"><h3>Inspect</h3><p>Slides open the actual red flags for that file — a look-alike domain, an <span class="mono">.exe</span> from the web, urgent wording. It teaches, instead of just blocking.</p></div></div>
+    <div class="step"><div class="num">02</div><div class="body"><h3>Run anyway</h3><p>Respects the human. Patch steps aside for a few seconds and lets you through — because a guard that can't be overruled is just a wall.</p></div></div>
+    <div class="step"><div class="num">03</div><div class="body"><h3>High-five</h3><p>The reward path. Patch throws an arm up, your cursor flies to his mitt, sparks pop. Pure delight — and the reason people will actually keep him around.</p></div></div>
+    <div class="callout"><div class="tag">⌥ accessibility</div><p>The buttons are real, focusable buttons and the whole thing still works from the keyboard. Honour <span class="mono">prefers-reduced-motion</span> so the shove becomes a calm fade. Fun should never lock anyone out.</p></div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Step 6 — the AI Workspace bit</span>
+    <h2 style="margin-top:16px">Make the verdict <em>real</em> with AI</h2>
+    <p>In the demo, "is this risky?" is a hand-written list. In the real world that's exactly the job you hand to AI. This is where the project graduates from a fun front-end into something that belongs in the <strong>Automate &amp; Secure</strong> phase of the AI Workspace roadmap — right next to the AI Security Scanner.</p>
+    <p>You build the whole thing inside your AI workspace: let <strong>Cursor</strong> or <strong>Claude Code</strong> scaffold the boilerplate while you direct the craft, then replace the rules with a single call that asks an AI to judge a link or file and explain itself.</p>
+    <div class="code"><button class="copy" data-copy>copy</button><pre><code><span class="tok-com">// the production swap: ask AI for a verdict + reasons</span>
+<span class="tok-kw">async function</span> <span class="tok-fn">getVerdict</span>(file) {
+  <span class="tok-kw">const</span> res = <span class="tok-kw">await</span> <span class="tok-fn">fetch</span>(<span class="tok-val">'/api/scan'</span>, {
+    method: <span class="tok-val">'POST'</span>,
+    body: <span class="tok-fn">JSON.stringify</span>({ name: file.name, url: file.url })
+  });
+  <span class="tok-kw">return</span> <span class="tok-kw">await</span> res.<span class="tok-fn">json</span>();   <span class="tok-com">// → { risk: 0.92, reasons: [ … ] }</span>
+}
+
+<span class="tok-com">// Patch just reacts to the score — UI stays exactly the same</span>
+<span class="tok-kw">if</span> (verdict.risk &gt; <span class="tok-val">0.6</span>) <span class="tok-fn">guard</span>(file, verdict.reasons);</code></pre></div>
+    <div class="phase"><span class="tg">Phase 2 · AI Workspace</span><div class="pt"><b>Where it slots in.</b> The front-end teaches transforms &amp; interaction; the AI verdict teaches calling a model and acting on its output; and pulling live signals (domain age, reputation) through <b>MCP</b> connects it to real infrastructure — the same three skills the roadmap already builds, wrapped in something a learner genuinely wants to make.</div></div>
+    <div class="callout"><div class="tag">honest by design</div><p>Patch never silently blocks and never pretends to be certain — he shows the risk score, lists his reasons, and hands the final call back to you. That's the right posture for any AI safety tool: <strong>assistive, transparent, overridable.</strong></p></div>
+  </section>
+
+  <section>
+    <span class="eyebrow">For the NextWork team</span>
+    <h2 style="margin-top:16px">Project #3 in the interaction series</h2>
+    <p>Same one-hour, build-it-yourself, portfolio-ready shape as the rest — and it doubles as the friendly face of the security work the AI Workspace roadmap already teaches. Every lesson in the series follows five beats:</p>
+    <div class="beats">
+      <div class="beat"><div class="bn">i</div><div class="bt"><b>One interaction, one concept.</b> Patch teaches custom cursors &amp; reacting to an AI verdict — nothing more.</div></div>
+      <div class="beat"><div class="bn">ii</div><div class="bt"><b>Vanilla first, AI second.</b> Ship it working with hard-coded rules, then upgrade the brain. Beginners never get stuck.</div></div>
+      <div class="beat"><div class="bn">iii</div><div class="bt"><b>Anatomy first.</b> Name every part before animating it.</div></div>
+      <div class="beat"><div class="bn">iv</div><div class="bt"><b>Isolate the craft move.</b> Here it's the rim-clamp and the posture poses — the bits that make it feel alive.</div></div>
+      <div class="beat"><div class="bn">v</div><div class="bt"><b>End on a challenge.</b> "Give Patch a new pose," "wire in a real scan API" — each learner ships their own proof of work.</div></div>
+    </div>
+    <div class="callout"><div class="tag">why it fits NextWork</div><p>It turns "audit for security" — which can feel dry — into a character people want to build, and quietly teaches the AI-verdict pattern from the roadmap along the way. I'd love to build out the first few of these with the lead designer and shape how the series is taught.</p></div>
+  </section>
+
+  <div class="footer">
+    Project #3 in a hand-built NextWork interaction series, by <strong style="color:var(--text)">Lily Blanch</strong><br>
+    <a href="https://byblanch.framer.website">byblanch.framer.website</a> &nbsp;·&nbsp; <a href="mailto:lilybelleblanch@icloud.com">lilybelleblanch@icloud.com</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  var screen=document.getElementById('screen');
+  var cursor=document.getElementById('cursor');
+  var patch=document.getElementById('patch');
+  var choice=document.getElementById('choice');
+  var toastEl=document.getElementById('toast');
+  var reasons=document.getElementById('reasons');
+  var rlist=document.getElementById('rlist');
+  var cmsg=document.getElementById('cmsg');
+
+  var RADIUS=108;
+  var tx=-200,ty=-200,cx=-200,cy=-200;
+  var latched=null;            // the threat tile currently being guarded
+  var highfiving=false;
+  var allowUntil={};           // id -> timestamp guarding is off until
+
+  var FLAGS={
+    reset:["Look-alike domain on an unusual .link TLD","Urgent wording ('now') to rush you","Designed to capture your password","The visible text doesn't match the real destination"],
+    iphone:["A program (.exe) downloaded from the web","A reward that's too good to be true","ALL-CAPS pressure in the filename","Unsigned — no known, trusted publisher"]
+  };
+
+  var tiles=[].slice.call(document.querySelectorAll('.tile'));
+  var risky=tiles.filter(function(t){return t.dataset.safe==='0';});
+
+  function rect(){return screen.getBoundingClientRect();}
+  function centre(el){var r=el.getBoundingClientRect(),s=rect();return {x:r.left-s.left+r.width/2,y:r.top-s.top+r.height/2};}
+
+  screen.addEventListener('mousemove',function(e){var r=rect();tx=e.clientX-r.left;ty=e.clientY-r.top;});
+  screen.addEventListener('mouseleave',function(){tx=-200;ty=-200;if(latched&&!highfiving)unlatch();});
+
+  // hover morph on safe tiles + choice buttons ("keep the mouse change")
+  tiles.forEach(function(t){
+    t.addEventListener('mouseenter',function(){if(t.dataset.safe==='1')cursor.classList.add('hot');});
+    t.addEventListener('mouseleave',function(){cursor.classList.remove('hot');});
+    t.addEventListener('click',function(){
+      if(t.dataset.safe==='1'){toast('Looks safe — opening '+t.dataset.name,'safe');}
+      else if((allowUntil[t.dataset.id]||0)>now()){toast('Opening '+t.dataset.name+' …','warn');}
+    });
+  });
+  [].slice.call(choice.querySelectorAll('button')).forEach(function(b){
+    b.addEventListener('mouseenter',function(){cursor.classList.add('hot');});
+    b.addEventListener('mouseleave',function(){cursor.classList.remove('hot');});
+  });
+
+  function now(){return performance.now();}
+
+  function summon(tile,c,ux,uy){
+    // stand Patch in the gap between cursor and file
+    var px=c.x+ux*(RADIUS*0.46), py=c.y+uy*(RADIUS*0.46)+8;
+    patch.style.transform='translate('+px+'px,'+py+'px) translate(-50%,-100%)';
+    patch.classList.add('show','alert');
+    // face the cursor: flip the figure if cursor is to the left
+    patch.querySelector('.fig').style.scale = (ux<0? '-1 1':'1 1');
+  }
+  function hidePatch(){patch.classList.remove('show','alert','hi');}
+
+  function showChoice(tile){
+    cmsg.innerHTML='<b>Hold up.</b> <span class="mono" style="opacity:.8">'+tile.dataset.name+'</span> looks risky. Your call:';
+    rlist.innerHTML=(FLAGS[tile.dataset.id]||[]).map(function(r){
+      return '<li><span class="x"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6L6 18M6 6l12 12"/></svg></span>'+r+'</li>';
+    }).join('');
+    reasons.classList.remove('open');
+    choice.classList.add('show');
+  }
+  function hideChoice(){choice.classList.remove('show');reasons.classList.remove('open');}
+
+  function latch(tile){latched=tile;showChoice(tile);}
+  function unlatch(){latched=null;hideChoice();hidePatch();}
+
+  function toast(msg,kind){
+    toastEl.textContent=msg;toastEl.className='toast show'+(kind?' '+kind:'');
+    clearTimeout(toast._t);toast._t=setTimeout(function(){toastEl.classList.remove('show');},2200);
+  }
+
+  function sparks(x,y){
+    var cols=['#39D6A0','#E5631B','#ffffff','#8fd0ff'];
+    for(var i=0;i<14;i++){(function(i){
+      var s=document.createElement('span');s.className='spark';
+      s.style.background=cols[i%cols.length];s.style.left=x+'px';s.style.top=y+'px';
+      screen.appendChild(s);
+      var a=(Math.PI*2)*(i/14),d=30+Math.random()*34;
+      s.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:1},
+                 {transform:'translate(calc(-50% + '+Math.cos(a)*d+'px),calc(-50% + '+Math.sin(a)*d+'px)) scale(0)',opacity:0}],
+                {duration:600+Math.random()*300,easing:'cubic-bezier(.2,.7,.3,1)'}).onfinish=function(){s.remove();};
+    })(i);}
+  }
+
+  // buttons
+  document.getElementById('bInsp').addEventListener('click',function(){reasons.classList.toggle('open');});
+  document.getElementById('bRun').addEventListener('click',function(){
+    if(!latched)return;allowUntil[latched.dataset.id]=now()+6000;
+    toast("Opening "+latched.dataset.name+" — you're on your own.",'warn');unlatch();
+  });
+  document.getElementById('bFive').addEventListener('click',function(){
+    if(!latched)return;highfiving=true;
+    patch.classList.remove('alert');patch.classList.add('hi');
+    // move cursor up to his mitt
+    var pr=patch.getBoundingClientRect(),s=rect();
+    var hx=pr.left-s.left+pr.width*0.66, hy=pr.top-s.top+8;
+    tx=hx;ty=hy;
+    setTimeout(function(){sparks(hx,hy);toast('Nice one. Stay safe out there.','safe');},360);
+    setTimeout(function(){highfiving=false;patch.classList.remove('hi');unlatch();},1500);
+  });
+  // click empty space dismisses
+  screen.addEventListener('click',function(e){
+    if(highfiving)return;
+    if(!e.target.closest('.tile')&&!e.target.closest('.choice')&&latched)unlatch();
+  });
+
+  function loop(){
+    cx+=(tx-cx)*0.22; cy+=(ty-cy)*0.22;
+    var blocked=false;
+    if(!highfiving){
+      var near=null,nd=1e9,ndata=null;
+      for(var i=0;i<risky.length;i++){
+        var t=risky[i];if((allowUntil[t.dataset.id]||0)>now())continue;
+        var c=centre(t);var dx=cx-c.x,dy=cy-c.y,dist=Math.hypot(dx,dy);
+        if(dist<RADIUS&&dist<nd){near=t;nd=dist;ndata={c:c,ux:dx/(dist||1),uy:dy/(dist||1)};}
+      }
+      if(near){
+        // clamp cursor to the rim
+        cx=ndata.c.x+ndata.ux*RADIUS; cy=ndata.c.y+ndata.uy*RADIUS; blocked=true;
+        if(latched!==near)latch(near);          // keep the card synced to THIS tile
+        summon(near,ndata.c,ndata.ux,ndata.uy);
+      } else if(latched){
+        patch.classList.add('show');
+        patch.classList.remove('alert');        // relax pose, but stay put
+      } else {
+        hidePatch();
+      }
+    }
+    cursor.classList.toggle('blocked',blocked);
+    if(blocked)cursor.classList.remove('hot');
+    cursor.style.transform='translate('+cx+'px,'+cy+'px)';
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  // copy buttons
+  document.querySelectorAll('[data-copy]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var code=btn.parentElement.querySelector('code');
+      navigator.clipboard&&navigator.clipboard.writeText(code.innerText).then(function(){
+        var o=btn.textContent;btn.textContent='copied';setTimeout(function(){btn.textContent=o;},1300);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
